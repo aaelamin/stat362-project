@@ -9,39 +9,63 @@ library(tidyr)
 library(ggplot2)
 library(randomForest)
 library(caret)
+library(corrplot)
 
+# set the working directory for the project
+setwd("/Users/elamin/Courses/STAT 362/stat362-project")
+
+# Load the dataset
 df <- read.csv("fetal_health.csv")
 
-# Quick exploration
+# View the first few rows of the dataset
 head(df)
+
+# Get a summary of the dataset
 summary(df)
+
+# Get the structure of the dataset
 str(df)
 
-# Check for NA values
+# Check for missing values
 sum(is.na(df))
 
-# Depending on your findings, you may need to preprocess data (e.g., impute missing values, create new features, etc.)
+# check how is the target variable distributed 
+class_distribution <- table(df$fetal_health)
+print(class_distribution)
 
+# DATA VISUALIZATION
 
-set.seed(123) # For reproducibility
-indexes <- sample(1:nrow(df), size = 0.7*nrow(df))
-train_data <- df[indexes, ]
-test_data <- df[-indexes, ]
+# Calculate the correlation matrix
+cor_matrix <- cor(df, use = "complete.obs") 
+# png("corrplot.png", width = 800, height = 800)
+corrplot(cor_matrix, method = "color", tl.cex = 0.6)
+# dev.off()
 
-# Adjust 'fetal_health' if your target variable is named differently
-model <- randomForest(fetal_health ~ ., data = train_data)
+# uncomment line 40 and 42 if you want to save file and get a cleaarer view
 
+# BUILD CLASSIFICATION MODEL
 
-predictions <- predict(model, test_data)
-confusionMatrix <- table(test_data$fetal_health, predictions)
-print(confusionMatrix)
+# Split the data into training and testing sets, if you haven't already
+set.seed(1) 
+index <- createDataPartition(df$fetal_health, p = 0.8, list = FALSE)
+train_df <- df[index, ]
+test_df <- df[-index, ]
 
-# Calculate accuracy or other performance metrics as needed
-accuracy <- sum(diag(confusionMatrix)) / sum(confusionMatrix)
-print(paste("Accuracy:", accuracy))
+# Standardize testing and training sets
+train_df <- train_df %>%
+  mutate_if(is.numeric, ~ (. - min(.)) / (max(.) - min(.)))
 
-importance(model)
-varImpPlot(model)
+test_df <- test_df %>%
+  mutate_if(is.numeric, ~ (. - min(.)) / (max(.) - min(.)))
 
+# Fit the random forest model
+rf_model <- randomForest(fetal_health ~ ., data = train_df)
+
+# Predict on the test set
+test_pred <- predict(rf_model, newdata = test_df)
+
+# Create the confusion matrix
+con_matrix <- confusionMatrix(test_pred, test_df$fetal_health)
+print(conf_matrix)
 
 
