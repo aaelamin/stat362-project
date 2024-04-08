@@ -47,25 +47,22 @@ corrplot(cor_matrix, method = "color", tl.cex = 0.6)
 
 # Split the data into training and testing sets, if you haven't already
 set.seed(1) 
-index <- createDataPartition(df$fetal_health, p = 0.8, list = FALSE)
+index <- sample(1:nrow(df), 200, replace = FALSE)
 train_df <- df[index, ]
 test_df <- df[-index, ]
 
-# Standardize testing and training sets
-train_df <- train_df %>%
-  mutate_if(is.numeric, ~ (. - min(.)) / (max(.) - min(.)))
 
-test_df <- test_df %>%
-  mutate_if(is.numeric, ~ (. - min(.)) / (max(.) - min(.)))
+train_df$fetal_health <- as.factor(train_df$fetal_health)
+test_df$fetal_health <- as.factor(test_df$fetal_health)
 
-# Fit the random forest model
+# Fit the random forest model on training set
 rf_model <- randomForest(fetal_health ~ ., data = train_df)
 
 # Predict on the test set
 test_pred <- predict(rf_model, newdata = test_df)
 
 # Create the confusion matrix
-con_matrix <- confusionMatrix(test_pred, test_df$fetal_health)
+conf_matrix <- confusionMatrix(test_pred, test_df$fetal_health)
 print(conf_matrix)
 
 
