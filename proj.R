@@ -10,6 +10,9 @@ library(ggplot2)
 library(randomForest)
 library(caret)
 library(corrplot)
+library(gbm)
+library(e1071)
+
 
 # set the working directory for the project
 setwd("/Users/elamin/Courses/STAT 362/stat362-project")
@@ -46,8 +49,16 @@ corrplot(cor_matrix, method = "color", tl.cex = 0.6)
 # BUILD CLASSIFICATION MODEL
 
 # Split the data into training and testing sets, if you haven't already
+
+df$fetal_health <- factor(df$fetal_health,
+                          levels = c("1", "2", "3"),
+                          labels = c("Normal", "Suspect", "Pathological"))
+
+
+
+# Split the data into training and testing using the 80, 20 rulw
 set.seed(1) 
-index <- sample(1:nrow(df), 200, replace = FALSE)
+index <- sample(1:nrow(df), 425, replace = FALSE)
 train_df <- df[index, ]
 test_df <- df[-index, ]
 
@@ -55,14 +66,32 @@ test_df <- df[-index, ]
 train_df$fetal_health <- as.factor(train_df$fetal_health)
 test_df$fetal_health <- as.factor(test_df$fetal_health)
 
-# Fit the random forest model on training set
-rf_model <- randomForest(fetal_health ~ ., data = train_df)
+train_df <- train_df %>%
+  mutate_if(is.numeric, ~ (. - min(.)) / (max(.) - min(.)))
 
-# Predict on the test set
-test_pred <- predict(rf_model, newdata = test_df)
-
-# Create the confusion matrix
-conf_matrix <- confusionMatrix(test_pred, test_df$fetal_health)
-print(conf_matrix)
+test_df <- test_df %>%
+  mutate_if(is.numeric, ~ (. - min(.)) / (max(.) - min(.)))
 
 
+# Define trainControl for cross-validation
+control <- trainControl(method = "cv", number = 10, savePredictions = "final", classProbs = TRUE)
+
+# Train models
+models <- list(
+  rf = train(fetal_health ~ ., data = train_df, method = "rf", trControl = control),
+  svm = train(fetal_health ~ ., data = train_df, method = "svmRadial", trControl = control),
+  gbm = train(fetal_health ~ ., data = train_df, method = "gbm", trControl = control, verbose = FALSE),
+  knn = train(fetal_health ~ ., data = train_df, method = "knn", trControl = control)
+)
+
+# Evaluate models and print accuracies
+accuracies <- sapply(models, function(model) {
+  predictions <- predict(model, newdata = test_df)
+  cm <- confusionMatrix(predictions, test_df$fetal_health)
+  cm$overall['Accuracy']
+})
+
+# Print model accuracies
+sapply(names(accuracies), function(model_name) {
+  cat(paste0(model_name, ":", round(accuracies[model_name], 4)), "\n")
+})
