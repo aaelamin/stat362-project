@@ -1,5 +1,4 @@
-# Project Title: Your Project Name Here
-# Description: Fetal Health Analysis: Predictive Modeling Using CTG Data
+# Project Title: Fetal Health Analysis: Predictive Modeling Using CTG Data
 # Authors: Adam Elamin, Martina Mileva, Roy Yeoun, Basel Abdelhadi, Jasmine Taylor
 # Date: 29 March 2024
 
@@ -66,12 +65,6 @@ test_df <- df[-index, ]
 train_df$fetal_health <- as.factor(train_df$fetal_health)
 test_df$fetal_health <- as.factor(test_df$fetal_health)
 
-train_df <- train_df %>%
-  mutate_if(is.numeric, ~ (. - min(.)) / (max(.) - min(.)))
-
-test_df <- test_df %>%
-  mutate_if(is.numeric, ~ (. - min(.)) / (max(.) - min(.)))
-
 
 # Define trainControl for cross-validation
 control <- trainControl(method = "cv", number = 10, savePredictions = "final", classProbs = TRUE)
@@ -88,10 +81,6 @@ models <- list(
 accuracies <- sapply(models, function(model) {
   predictions <- predict(model, newdata = test_df)
   cm <- confusionMatrix(predictions, test_df$fetal_health)
-  cm$overall['Accuracy']
+  cm
 })
 
-# Print model accuracies
-sapply(names(accuracies), function(model_name) {
-  cat(paste0(model_name, ":", round(accuracies[model_name], 4)), "\n")
-})
